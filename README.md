@@ -99,7 +99,7 @@ docker compose down -v
 
 ## Документация
 
-- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** — подробное руководство по архитектуре проекта для новичков
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** — подробное руководство по архитектуре проекта
 
   - Объяснение всех слоев и компонентов
   - Принципы работы backend и frontend
