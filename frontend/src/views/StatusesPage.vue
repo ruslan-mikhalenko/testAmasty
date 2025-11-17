@@ -1,8 +1,9 @@
 <script setup>
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 import { useAdminStore } from '@/stores/admin';
 
 const admin = useAdminStore();
+const error = ref('');
 
 if (!admin.statuses.length) {
   admin.fetchStatuses();
@@ -12,16 +13,28 @@ const form = reactive({ id: null, name: '' });
 const editStatus = (status) => {
   form.id = status.id;
   form.name = status.name;
+  error.value = '';
 };
 
 const reset = () => {
   form.id = null;
   form.name = '';
+  error.value = '';
 };
 
 const submit = async () => {
-  await admin.upsertStatus({ ...form });
-  reset();
+  if (!form.name || !form.name.trim()) {
+    error.value = 'Название статуса обязательно';
+    return;
+  }
+  
+  try {
+    error.value = '';
+    await admin.upsertStatus({ ...form });
+    reset();
+  } catch (err) {
+    error.value = err.response?.data?.errors?.[0] || 'Ошибка при сохранении статуса';
+  }
 };
 
 const remove = async (id) => {
@@ -43,12 +56,13 @@ const remove = async (id) => {
     <div class="editor">
       <label>
         Название
-        <input v-model="form.name" class="input" placeholder="Например: Ready For Review" />
+        <input v-model="form.name" class="input" placeholder="Например: Ready For Review" required />
       </label>
       <div class="actions">
         <button class="button" @click="submit">{{ form.id ? 'Обновить' : 'Создать' }}</button>
         <button class="button secondary" @click="reset">Сброс</button>
       </div>
+      <p v-if="error" class="error">{{ error }}</p>
     </div>
 
     <table class="table">
@@ -85,5 +99,11 @@ const remove = async (id) => {
   display: flex;
   gap: 12px;
   align-items: center;
+}
+
+.error {
+  color: var(--danger);
+  font-size: 0.9rem;
+  margin-top: 8px;
 }
 </style>

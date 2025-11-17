@@ -1,8 +1,9 @@
 <script setup>
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 import { useAdminStore } from '@/stores/admin';
 
 const admin = useAdminStore();
+const error = ref('');
 
 if (!admin.tags.length) {
   admin.fetchTags();
@@ -13,17 +14,29 @@ const editTag = (tag) => {
   form.id = tag.id;
   form.name = tag.name;
   form.color = tag.color;
+  error.value = '';
 };
 
 const reset = () => {
   form.id = null;
   form.name = '';
   form.color = '#2563eb';
+  error.value = '';
 };
 
 const submit = async () => {
-  await admin.upsertTag({ ...form });
-  reset();
+  if (!form.name || !form.name.trim()) {
+    error.value = 'Название тега обязательно';
+    return;
+  }
+  
+  try {
+    error.value = '';
+    await admin.upsertTag({ ...form });
+    reset();
+  } catch (err) {
+    error.value = err.response?.data?.errors?.[0] || 'Ошибка при сохранении тега';
+  }
 };
 
 const remove = async (id) => {
@@ -45,7 +58,7 @@ const remove = async (id) => {
     <div class="editor">
       <label>
         Название
-        <input v-model="form.name" class="input" placeholder="Например: Tech" />
+        <input v-model="form.name" class="input" placeholder="Например: Tech" required />
       </label>
       <label>
         Цвет
@@ -55,6 +68,7 @@ const remove = async (id) => {
         <button class="button" @click="submit">{{ form.id ? 'Обновить' : 'Создать' }}</button>
         <button class="button secondary" @click="reset">Сброс</button>
       </div>
+      <p v-if="error" class="error">{{ error }}</p>
     </div>
 
     <table class="table">
@@ -95,5 +109,11 @@ const remove = async (id) => {
   display: flex;
   gap: 12px;
   align-items: center;
+}
+
+.error {
+  color: var(--danger);
+  font-size: 0.9rem;
+  margin-top: 8px;
 }
 </style>
