@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useTicketsStore } from '@/stores/tickets';
 import api from '@/services/api';
 
@@ -9,7 +9,7 @@ const showForm = ref(false);
 const selectedTicket = ref(null);
 const loadingTicket = ref(false);
 const creation = reactive({ title: '', description: '' });
-const filters = reactive({ status: '', search: '' });
+const filters = reactive({ status: '', search: '', dateFrom: '', dateTo: '' });
 
 const loadStatuses = async () => {
   const { data } = await api.get('statuses');
@@ -17,7 +17,30 @@ const loadStatuses = async () => {
 };
 
 const loadTickets = async () => {
-  await tickets.fetch({ ...filters });
+  try {
+    tickets.setFilter('status', filters.status || '');
+    tickets.setFilter('search', filters.search || '');
+    tickets.setFilter('dateFrom', filters.dateFrom || '');
+    tickets.setFilter('dateTo', filters.dateTo || '');
+    await tickets.fetch({ page: 1 });
+  } catch (error) {
+    console.error('Ошибка загрузки задач:', error);
+  }
+};
+
+const sortBy = (field) => {
+  tickets.toggleSort(field);
+  loadTickets();
+};
+
+const currentSort = computed(() => {
+  const [field, dir] = tickets.sort.split(':');
+  return { field, direction: dir };
+});
+
+const getSortIcon = (field) => {
+  if (currentSort.value.field !== field) return '↕️';
+  return currentSort.value.direction === 'asc' ? '↑' : '↓';
 };
 
 const openTicket = async (ticketId) => {
@@ -30,10 +53,14 @@ const openTicket = async (ticketId) => {
 };
 
 const submitTicket = async () => {
-  await tickets.create(creation);
-  creation.title = '';
-  creation.description = '';
-  showForm.value = false;
+  try {
+    await tickets.create(creation);
+    creation.title = '';
+    creation.description = '';
+    showForm.value = false;
+  } catch (error) {
+    console.error('Ошибка создания задачи:', error);
+  }
 };
 
 onMounted(async () => {
@@ -72,18 +99,30 @@ onMounted(async () => {
           {{ status.name }}
         </option>
       </select>
-      <input v-model="filters.search" class="input" placeholder="Поиск" @keyup.enter="loadTickets" />
+      <input v-model="filters.search" class="input" placeholder="Поиск по названию/описанию" @keyup.enter="loadTickets" />
+      <input v-model="filters.dateFrom" type="date" class="input" placeholder="С даты" @change="loadTickets" />
+      <input v-model="filters.dateTo" type="date" class="input" placeholder="По дату" @change="loadTickets" />
       <button class="button secondary" @click="loadTickets">Применить</button>
+      <button class="button secondary" @click="() => { filters.status = ''; filters.search = ''; filters.dateFrom = ''; filters.dateTo = ''; loadTickets(); }">Сбросить</button>
     </div>
 
-    <div class="table-wrapper">
+    <div v-if="tickets.loading" class="loading">Загрузка...</div>
+    <div v-else class="table-wrapper">
       <table class="table">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Создано</th>
-            <th>Обновлено</th>
-            <th>Статус</th>
+            <th class="sortable" @click="sortBy('id')">
+              ID {{ getSortIcon('id') }}
+            </th>
+            <th class="sortable" @click="sortBy('created_at')">
+              Создано {{ getSortIcon('created_at') }}
+            </th>
+            <th class="sortable" @click="sortBy('updated_at')">
+              Обновлено {{ getSortIcon('updated_at') }}
+            </th>
+            <th class="sortable" @click="sortBy('status_id')">
+              Статус {{ getSortIcon('status_id') }}
+            </th>
             <th>Описание</th>
             <th></th>
           </tr>
@@ -163,6 +202,23 @@ onMounted(async () => {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.loading {
+  padding: 24px;
+  text-align: center;
+  color: #64748b;
+}
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+.sortable:hover {
+  background-color: rgba(37, 99, 235, 0.05);
 }
 
 .table-wrapper {

@@ -74,7 +74,8 @@ class TicketService
     private function parseSort(string $sort): array
     {
         [$field, $direction] = array_pad(explode(':', $sort), 2, 'desc');
-        $field = in_array($field, ['created_at', 'updated_at', 'status_id'], true) ? $field : 'created_at';
+        $allowedFields = ['id', 'created_at', 'updated_at', 'status_id'];
+        $field = in_array($field, $allowedFields, true) ? $field : 'created_at';
         $direction = strtolower($direction) === 'asc' ? 'ASC' : 'DESC';
 
         return [$field, $direction];

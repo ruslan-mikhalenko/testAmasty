@@ -17,12 +17,15 @@ class TicketController
     public function index(Request $request, array $params = []): Response
     {
         $user = $request->requireAuth();
-        $filters = [
-            'status' => $request->query['status'] ?? null,
-            'search' => $request->query['search'] ?? null,
-            'dateFrom' => $request->query['dateFrom'] ?? null,
-            'dateTo' => $request->query['dateTo'] ?? null,
-        ];
+        
+        // Фильтруем пустые строки
+        $filters = [];
+        foreach (['status', 'search', 'dateFrom', 'dateTo'] as $key) {
+            $value = $request->query[$key] ?? null;
+            if ($value !== null && $value !== '') {
+                $filters[$key] = $value;
+            }
+        }
 
         $sort = $request->query['sort'] ?? 'created_at:desc';
         $page = (int) ($request->query['page'] ?? 1);

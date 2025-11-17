@@ -77,8 +77,10 @@ class TicketRepository
         }
 
         if (!empty($filters['search'])) {
-            $where[] = '(t.title LIKE :search OR t.description LIKE :search)';
-            $params['search'] = '%' . $filters['search'] . '%';
+            $where[] = '(t.title LIKE :search_title OR t.description LIKE :search_desc)';
+            $searchValue = '%' . $filters['search'] . '%';
+            $params['search_title'] = $searchValue;
+            $params['search_desc'] = $searchValue;
         }
 
         if (!empty($filters['dateFrom'])) {
@@ -98,7 +100,7 @@ class TicketRepository
         $total = (int) $countStmt->fetchColumn();
 
         $offset = max(0, ($page - 1) * $perPage);
-        $allowedFields = ['created_at', 'updated_at', 'status_id'];
+        $allowedFields = ['id', 'created_at', 'updated_at', 'status_id'];
         $sortField = in_array($sortField, $allowedFields, true) ? $sortField : 'created_at';
         $sortDirection = $sortDirection === 'ASC' ? 'ASC' : 'DESC';
 

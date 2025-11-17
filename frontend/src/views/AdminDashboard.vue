@@ -1,16 +1,39 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useAdminStore } from '@/stores/admin';
 
 const admin = useAdminStore();
-const filters = reactive({ status: '', search: '' });
+const filters = reactive({ status: '', search: '', dateFrom: '', dateTo: '' });
 const selectedTicket = ref(null);
 const edit = reactive({ status_id: null, tags: [] });
 const replyMessage = ref('');
 const panelLoading = ref(false);
 
 const applyFilters = async () => {
-  await admin.fetchTickets({ ...filters });
+  try {
+    admin.setFilter('status', filters.status || '');
+    admin.setFilter('search', filters.search || '');
+    admin.setFilter('dateFrom', filters.dateFrom || '');
+    admin.setFilter('dateTo', filters.dateTo || '');
+    await admin.fetchTickets({ page: 1 });
+  } catch (error) {
+    console.error('Ошибка применения фильтров:', error);
+  }
+};
+
+const sortBy = (field) => {
+  admin.toggleSort(field);
+  applyFilters();
+};
+
+const currentSort = computed(() => {
+  const [field, dir] = admin.sort.split(':');
+  return { field, direction: dir };
+});
+
+const getSortIcon = (field) => {
+  if (currentSort.value.field !== field) return '↕️';
+  return currentSort.value.direction === 'asc' ? '↑' : '↓';
 };
 
 const openTicket = async (ticketId) => {
@@ -58,19 +81,32 @@ onMounted(() => {
           {{ status.name }}
         </option>
       </select>
-      <input v-model="filters.search" class="input" placeholder="Поиск" @keyup.enter="applyFilters" />
+      <input v-model="filters.search" class="input" placeholder="Поиск по названию/описанию" @keyup.enter="applyFilters" />
+      <input v-model="filters.dateFrom" type="date" class="input" placeholder="С даты" @change="applyFilters" />
+      <input v-model="filters.dateTo" type="date" class="input" placeholder="По дату" @change="applyFilters" />
       <button class="button secondary" @click="applyFilters">Применить</button>
+      <button class="button secondary" @click="() => { filters.status = ''; filters.search = ''; filters.dateFrom = ''; filters.dateTo = ''; applyFilters(); }">Сбросить</button>
     </div>
 
-    <div class="table-wrapper">
+    <div v-if="admin.loading" class="loading">Загрузка...</div>
+    <div v-else class="table-wrapper">
       <table class="table">
         <thead>
           <tr>
-            <th>ID</th>
+            <th class="sortable" @click="sortBy('id')">
+              ID {{ getSortIcon('id') }}
+            </th>
             <th>Клиент</th>
-            <th>Статус</th>
+            <th class="sortable" @click="sortBy('status_id')">
+              Статус {{ getSortIcon('status_id') }}
+            </th>
             <th>Теги</th>
-            <th>Обновлено</th>
+            <th class="sortable" @click="sortBy('updated_at')">
+              Обновлено {{ getSortIcon('updated_at') }}
+            </th>
+            <th class="sortable" @click="sortBy('created_at')">
+              Создано {{ getSortIcon('created_at') }}
+            </th>
             <th></th>
           </tr>
         </thead>
@@ -78,13 +114,18 @@ onMounted(() => {
           <tr v-for="ticket in admin.tickets" :key="ticket.id">
             <td>#{{ ticket.id }}</td>
             <td>{{ ticket.user_email }}</td>
-            <td>{{ ticket.status_name }}</td>
+            <td>
+              <span class="badge" :style="{ background: 'rgba(37,99,235,0.1)', color: '#1d4ed8' }">
+                {{ ticket.status_name }}
+              </span>
+            </td>
             <td>
               <span v-for="tag in ticket.tags" :key="tag.id" class="badge" :style="{ background: tag.color, color: '#fff' }">
                 {{ tag.name }}
               </span>
             </td>
             <td>{{ new Date(ticket.updated_at).toLocaleString() }}</td>
+            <td>{{ new Date(ticket.created_at).toLocaleString() }}</td>
             <td>
               <button class="button secondary" @click="openTicket(ticket.id)">Открыть</button>
             </td>
@@ -157,6 +198,23 @@ onMounted(() => {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.loading {
+  padding: 24px;
+  text-align: center;
+  color: #64748b;
+}
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+.sortable:hover {
+  background-color: rgba(37, 99, 235, 0.05);
 }
 
 .table-wrapper {
