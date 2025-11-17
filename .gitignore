@@ -1,0 +1,30 @@
+/vendor/
+/node_modules/
+/frontend/node_modules/
+/backend/vendor/
+.env
+backend/.env
+frontend/.env.local
+.idea/
+.DS_Store
+
+# Docker
+.docker/
+*.log
+
+# IDE
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+
+# Build outputs
+frontend/dist/
+backend/public/app/
+
+# Database
+*.sqlite
+*.sqlite3
